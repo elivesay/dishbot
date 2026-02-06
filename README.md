@@ -257,17 +257,20 @@ nvidia-smi
 docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
 ```
 
-**Permission issues:**
+**Permission issues (Linux):**
 ```bash
 # Ensure your user can run Docker
 sudo usermod -aG docker $USER
 # Log out and back in
 
-# Fix volume permissions
+# Fix volume permissions (optional; UID/GID match host)
 export UID=$(id -u)
 export GID=$(id -g)
 docker compose build
 ```
+
+**Windows – "group id / GID already exists":**  
+The Dockerfile is set up so that if the base image already has a group with the given GID (e.g. 1000), the build reuses that group instead of creating a new one. You can build without setting `UID`/`GID`; defaults (1000) work. If you still see the error, set a different GID before building (e.g. in PowerShell: `$env:GID=10000` then `docker compose build`).
 
 **Out of memory:**
 ```bash

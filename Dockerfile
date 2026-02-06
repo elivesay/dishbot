@@ -54,15 +54,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for running the application
+# Create a non-root user for running the application.
+# On Windows and some base images (e.g. NVIDIA Isaac Sim), GID 1000 may already
+# exist; use the existing group instead of creating a new one to avoid "group already exists".
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-RUN groupadd --gid ${GROUP_ID} dishbot || true \
-    && useradd --uid ${USER_ID} --gid ${GROUP_ID} -m dishbot || true \
-    && chown -R dishbot:dishbot /workspace
+RUN set -eux; \
+    if getent group ${GROUP_ID} >/dev/null 2>&1; then \
+      EXISTING_GROUP=$(getent group ${GROUP_ID} | cut -d: -f1); \
+      (id -u dishbot >/dev/null 2>&1 && echo "User dishbot exists") || useradd --uid ${USER_ID} --gid ${GROUP_ID} --no-create-home dishbot; \
+      mkdir -p /home/dishbot && chown ${USER_ID}:${GROUP_ID} /home/dishbot; \
+      chown -R ${USER_ID}:${GROUP_ID} /workspace; \
+    else \
+      groupadd --gid ${GROUP_ID} dishbot || true; \
+      useradd --uid ${USER_ID} --gid ${GROUP_ID} -m dishbot || true; \
+      chown -R ${USER_ID}:${GROUP_ID} /workspace; \
+    fi
 
-# Copy requirements first for better caching
-COPY --chown=dishbot:dishbot pyproject.toml README.md ./
+# Copy requirements first for better caching (use numeric UID:GID so it works when group name is not "dishbot")
+COPY --chown=${USER_ID}:${GROUP_ID} pyproject.toml README.md ./
 
 # Install Python dependencies using Isaac Sim's Python
 # Isaac Sim comes with its own Python environment
@@ -90,13 +100,13 @@ RUN ${ISAAC_SIM_PATH}/python.sh -m pip install --no-cache-dir --upgrade pip \
     pandas>=2.1.0
 
 # Copy the rest of the application
-COPY --chown=dishbot:dishbot . .
+COPY --chown=${USER_ID}:${GROUP_ID} . .
 
 # Install DishBot package in development mode
 RUN ${ISAAC_SIM_PATH}/python.sh -m pip install --no-cache-dir -e .
 
 # Copy and set up the entrypoint script
-COPY --chown=dishbot:dishbot docker/entrypoint.sh /entrypoint.sh
+COPY --chown=${USER_ID}:${GROUP_ID} docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Switch to non-root user
