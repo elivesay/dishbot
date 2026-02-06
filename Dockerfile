@@ -55,24 +55,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for running the application.
-# On Windows and some base images (e.g. NVIDIA Isaac Sim), GID 1000 may already
-# exist; use the existing group instead of creating a new one to avoid "group already exists".
+# Base images (e.g. NVIDIA Isaac Sim) often have UID/GID 1000 already; use existing
+# group when GID is taken and a fallback UID when UID is taken to avoid "already exists" errors.
 ARG USER_ID=1000
 ARG GROUP_ID=1000
+# Fallback UID when 1000 is already taken in the base image
+ARG FALLBACK_UID=10000
 RUN set -eux; \
     if getent group ${GROUP_ID} >/dev/null 2>&1; then \
-      EXISTING_GROUP=$(getent group ${GROUP_ID} | cut -d: -f1); \
-      (id -u dishbot >/dev/null 2>&1 && echo "User dishbot exists") || useradd --uid ${USER_ID} --gid ${GROUP_ID} --no-create-home dishbot; \
-      mkdir -p /home/dishbot && chown ${USER_ID}:${GROUP_ID} /home/dishbot; \
-      chown -R ${USER_ID}:${GROUP_ID} /workspace; \
+      (id -u dishbot >/dev/null 2>&1 && echo "User dishbot exists") || \
+        useradd --uid $(getent passwd ${USER_ID} >/dev/null 2>&1 && echo ${FALLBACK_UID} || echo ${USER_ID}) --gid ${GROUP_ID} --no-create-home dishbot; \
     else \
       groupadd --gid ${GROUP_ID} dishbot || true; \
-      useradd --uid ${USER_ID} --gid ${GROUP_ID} -m dishbot || true; \
-      chown -R ${USER_ID}:${GROUP_ID} /workspace; \
-    fi
+      (id -u dishbot >/dev/null 2>&1 && echo "User dishbot exists") || \
+        useradd --uid $(getent passwd ${USER_ID} >/dev/null 2>&1 && echo ${FALLBACK_UID} || echo ${USER_ID}) --gid ${GROUP_ID} -m dishbot || true; \
+    fi; \
+    mkdir -p /home/dishbot; \
+    chown -R $(id -u dishbot):$(id -g dishbot) /workspace /home/dishbot
 
-# Copy requirements first for better caching (use numeric UID:GID so it works when group name is not "dishbot")
-COPY --chown=${USER_ID}:${GROUP_ID} pyproject.toml README.md ./
+# Copy requirements first for better caching (chown by name so it works with fallback UID)
+COPY pyproject.toml README.md ./
+RUN chown -R $(id -u dishbot):$(id -g dishbot) /workspace
 
 # Install Python dependencies using Isaac Sim's Python
 # Isaac Sim comes with its own Python environment
@@ -100,14 +103,15 @@ RUN ${ISAAC_SIM_PATH}/python.sh -m pip install --no-cache-dir --upgrade pip \
     pandas>=2.1.0
 
 # Copy the rest of the application
-COPY --chown=${USER_ID}:${GROUP_ID} . .
+COPY . .
+RUN chown -R $(id -u dishbot):$(id -g dishbot) /workspace
 
 # Install DishBot package in development mode
 RUN ${ISAAC_SIM_PATH}/python.sh -m pip install --no-cache-dir -e .
 
 # Copy and set up the entrypoint script
-COPY --chown=${USER_ID}:${GROUP_ID} docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chown $(id -u dishbot):$(id -g dishbot) /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Switch to non-root user
 USER dishbot
