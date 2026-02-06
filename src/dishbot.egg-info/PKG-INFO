@@ -1,0 +1,386 @@
+Metadata-Version: 2.4
+Name: dishbot
+Version: 0.1.0
+Summary: Robotic dishwashing system with vision and 3D reconstruction
+Author: DishBot Team
+License: MIT
+Project-URL: Homepage, https://github.com/dishbot/dishbot
+Project-URL: Documentation, https://github.com/dishbot/dishbot#readme
+Project-URL: Repository, https://github.com/dishbot/dishbot
+Project-URL: Issues, https://github.com/dishbot/dishbot/issues
+Keywords: robotics,computer-vision,3d-reconstruction,manipulation,isaac-sim
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Image Processing
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: transformers>=4.37.0
+Requires-Dist: qwen-vl-utils>=0.0.8
+Requires-Dist: accelerate>=0.25.0
+Requires-Dist: open3d>=0.18.0
+Requires-Dist: trimesh>=4.0.0
+Requires-Dist: scipy>=1.11.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: Pillow>=10.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: omegaconf>=2.3.0
+Requires-Dist: hydra-core>=1.3.0
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: h5py>=3.10.0
+Requires-Dist: pandas>=2.1.0
+Provides-Extra: isaac-sim
+Requires-Dist: isaacsim>=4.0.0; platform_system == "Linux" and extra == "isaac-sim"
+Provides-Extra: ros
+Requires-Dist: rclpy>=3.0.0; extra == "ros"
+Requires-Dist: sensor_msgs>=0.0.1; extra == "ros"
+Requires-Dist: geometry_msgs>=0.0.1; extra == "ros"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.12.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.7.0; extra == "dev"
+Requires-Dist: pre-commit>=3.6.0; extra == "dev"
+Provides-Extra: visualization
+Requires-Dist: matplotlib>=3.8.0; extra == "visualization"
+Requires-Dist: plotly>=5.18.0; extra == "visualization"
+Requires-Dist: wandb>=0.16.0; extra == "visualization"
+Requires-Dist: tensorboard>=2.15.0; extra == "visualization"
+Provides-Extra: all
+Requires-Dist: dishbot[dev,visualization]; extra == "all"
+
+# DishBot: Robotic Dishwashing with Vision and 3D Reconstruction
+
+A comprehensive robotic dishwashing system combining computer vision, 3D geometry reconstruction, and manipulation planning.
+
+## Overview
+
+DishBot is a complete pipeline for autonomous dishwashing robots that includes:
+
+- **Vision Module**: Semantic dish detection using Qwen2-VL vision-language model
+- **3D Reconstruction**: RGBD to point cloud conversion with Open3D
+- **Grasp Planning**: Multiple grasp strategies (top-down, side, rim, pinch)
+- **Simulation**: NVIDIA Isaac Sim integration with domain randomization
+- **Robot Control**: Franka Panda arm control with inverse kinematics
+- **Training Pipeline**: ML-based grasp success prediction
+
+## Architecture
+
+```
+Pipeline Flow:
+Vision (Qwen2-VL) → 3D Reconstruction → Grasp Planning → Sim-to-Real → Robot Control
+```
+
+### Components
+
+```
+dishbot/
+├── src/dishbot/
+│   ├── __init__.py              # Package initialization
+│   ├── config.py                # Configuration management
+│   ├── vision_module.py         # Qwen2-VL + 3D reconstruction
+│   ├── grasp_planning.py        # Grasp pose generation
+│   ├── isaac_sim_env.py         # Isaac Sim environment
+│   ├── robot_controller.py      # Robot arm control
+│   ├── training_pipeline.py     # ML training
+│   └── main.py                  # Entry point
+├── configs/                      # Configuration files
+├── data/                         # Training data
+├── checkpoints/                  # Model checkpoints
+├── tests/                        # Unit tests
+├── pyproject.toml               # Project configuration
+└── README.md                    # This file
+```
+
+## Installation
+
+### Prerequisites
+
+- **CPython 3.10+** (PyPy is NOT supported - PyTorch requires CPython)
+- CUDA 11.8+ (for GPU acceleration on Linux/Windows)
+- NVIDIA Isaac Sim (optional, for real simulation)
+
+### Basic Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/dishbot/dishbot.git
+cd dishbot
+
+# Create virtual environment with CPython (not PyPy!)
+# If you have multiple Python versions, specify the path explicitly:
+#   /usr/local/bin/python3.10 -m venv .venv
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Verify you're using CPython (should NOT say PyPy)
+python --version
+
+# Install PyTorch FIRST (required before installing dishbot)
+# See https://pytorch.org/get-started/locally/ for other configurations
+
+# macOS (CPU only):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Linux/Windows with CUDA 11.8:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# Linux/Windows with CUDA 12.1:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Install the package
+pip install -e .
+```
+
+### Install with Development Tools
+
+```bash
+# PyTorch must be installed first (see above)
+pip install -e ".[dev]"
+```
+
+### Install with Visualization
+
+```bash
+# PyTorch must be installed first (see above)
+pip install -e ".[visualization]"
+```
+
+### Install All Optional Dependencies
+
+```bash
+# PyTorch must be installed first (see above)
+pip install -e ".[all]"
+```
+
+### Isaac Sim Installation
+
+For full simulation capabilities, install NVIDIA Isaac Sim via Omniverse:
+
+1. Download and install [NVIDIA Omniverse](https://www.nvidia.com/en-us/omniverse/)
+2. Install Isaac Sim from the Omniverse Launcher
+3. Follow the [Isaac Sim Python setup guide](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_python.html)
+
+## Quick Start
+
+### Run Demo (Mock Simulation)
+
+```bash
+dishbot demo
+```
+
+### Run Demo (Real Isaac Sim)
+
+```bash
+dishbot demo --real-sim
+```
+
+### Generate Training Data
+
+```bash
+dishbot train --generate-data --num-samples 10000
+```
+
+### Train Grasp Predictor
+
+```bash
+dishbot train --num-epochs 100
+```
+
+### Evaluate Model
+
+```bash
+dishbot evaluate --checkpoint checkpoints/checkpoint_best.pt
+```
+
+### Run Full Pipeline
+
+```bash
+dishbot run
+```
+
+## Configuration
+
+DishBot uses a hierarchical configuration system. You can customize settings via:
+
+1. **YAML files**: Pass `--config path/to/config.yaml`
+2. **Environment variables**: Use `DISHBOT_` prefix (e.g., `DISHBOT_VISION__MODEL_NAME`)
+3. **Command line arguments**: Override specific settings
+
+### Example Configuration
+
+```yaml
+# configs/default.yaml
+vision:
+  model_name: "Qwen/Qwen2-VL-7B-Instruct"
+  device: "auto"
+  torch_dtype: "float16"
+  voxel_size: 0.005
+  dbscan_eps: 0.02
+
+grasp:
+  gripper_width: 0.08
+  approach_distance: 0.1
+  stability_weight: 0.4
+
+simulation:
+  headless: false
+  physics_dt: 0.00833
+  enable_domain_randomization: true
+
+training:
+  batch_size: 32
+  learning_rate: 0.0001
+  num_epochs: 100
+```
+
+## Usage Examples
+
+### Python API
+
+```python
+from dishbot import (
+    DishBotConfig,
+    DishVisionSystem,
+    GraspPlanner,
+    IsaacSimDishwashingEnv,
+    DishwashingRobotController,
+)
+
+# Initialize configuration
+config = DishBotConfig()
+
+# Create vision system
+vision = DishVisionSystem(
+    vision_config=config.vision,
+    camera_config=config.camera,
+)
+
+# Reconstruct 3D from RGBD
+point_cloud = vision.reconstruct_3d_geometry(rgb_image, depth_image)
+
+# Segment dishes
+dishes = vision.segment_individual_dishes(point_cloud)
+
+# Plan grasps
+planner = GraspPlanner(config=config.grasp)
+for dish in dishes:
+    grasps = planner.compute_grasp_candidates(dish)
+    best_grasp = planner.select_best_grasp(grasps)
+```
+
+### Using the Trained Predictor
+
+```python
+from dishbot import GraspTrainingPipeline
+
+# Load trained model
+pipeline = GraspTrainingPipeline()
+pipeline.load_model("checkpoints/checkpoint_best.pt")
+
+# Predict grasp success
+success_prob = pipeline.predict(
+    grasp_pose,
+    object_center,
+    object_extent,
+    object_type_id,
+)
+```
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Code Formatting
+
+```bash
+black src/
+ruff check src/ --fix
+```
+
+### Type Checking
+
+```bash
+mypy src/dishbot/
+```
+
+## Project Structure Details
+
+### Vision Module
+
+The `DishVisionSystem` class provides:
+- Semantic dish detection using Qwen2-VL
+- RGBD to point cloud conversion
+- DBSCAN clustering for dish segmentation
+- Dish type classification from geometry
+
+### Grasp Planning
+
+The `GraspPlanner` supports multiple strategies:
+- **Top-down**: For flat objects (plates)
+- **Side grasp**: For tall objects (cups, glasses)
+- **Rim grasp**: For containers (bowls)
+- **Pinch grasp**: For thin objects (utensils)
+
+### Simulation
+
+The `IsaacSimDishwashingEnv` provides:
+- Configurable sink scene
+- Random dish spawning
+- RGBD camera observations
+- Domain randomization
+- Mock environment for development
+
+### Robot Control
+
+The `DishwashingRobotController` offers:
+- Forward/inverse kinematics
+- Trajectory generation
+- Grasp execution
+- Pick and place operations
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use DishBot in your research, please cite:
+
+```bibtex
+@software{dishbot2026,
+  title={DishBot: Robotic Dishwashing with Vision and 3D Reconstruction},
+  year={2026},
+  url={https://github.com/dishbot/dishbot}
+}
+```
+
+## Acknowledgments
+
+- [Qwen2-VL](https://github.com/QwenLM/Qwen2-VL) for vision-language understanding
+- [Open3D](http://www.open3d.org/) for 3D geometry processing
+- [NVIDIA Isaac Sim](https://developer.nvidia.com/isaac-sim) for robot simulation
+- [Franka Emika](https://www.franka.de/) for the Panda robot model

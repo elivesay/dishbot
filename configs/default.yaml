@@ -1,0 +1,92 @@
+# DishBot Default Configuration
+# Override settings by creating your own config file and passing --config path/to/config.yaml
+
+# Camera configuration
+camera:
+  fx: 615.0
+  fy: 615.0
+  cx: 320.0
+  cy: 240.0
+  width: 640
+  height: 480
+  depth_scale: 1000.0
+  min_depth: 0.1
+  max_depth: 2.0
+
+# Vision system configuration
+vision:
+  model_name: "Qwen/Qwen2-VL-7B-Instruct"
+  device: "auto"
+  torch_dtype: "float16"
+  max_new_tokens: 512
+  voxel_size: 0.005
+  dbscan_eps: 0.02
+  dbscan_min_points: 100
+  dish_detection_prompt: "Identify all dishes in this sink and describe their positions, types, and orientations."
+  grasp_analysis_prompt: "Analyze the graspable features of this dish. Identify the best grasp points."
+
+# Grasp planning configuration
+grasp:
+  gripper_width: 0.08
+  gripper_depth: 0.04
+  approach_distance: 0.1
+  flat_object_threshold: 0.05
+  stability_weight: 0.4
+  reachability_weight: 0.3
+  clearance_weight: 0.3
+  rim_percentile: 95.0
+  num_rim_candidates: 3
+
+# Robot configuration
+robot:
+  robot_type: "franka"
+  robot_usd_path: "/Isaac/Robots/Franka/franka_alt_fingers.usd"
+  end_effector_link: "panda_hand"
+  max_velocity: 1.0
+  max_acceleration: 0.5
+  planning_time: 5.0
+  position_gain: 100.0
+  velocity_gain: 10.0
+
+# Simulation configuration
+simulation:
+  headless: false
+  physics_dt: 0.00833  # 1/120
+  rendering_dt: 0.01667  # 1/60
+  sink_position: [0.5, 0.0, 0.8]
+  sink_dimensions: [0.6, 0.4, 0.2]
+  camera_position: [0.5, 0.0, 1.5]
+  enable_domain_randomization: true
+  lighting_variation: 0.3
+  texture_variation: true
+  min_dishes: 3
+  max_dishes: 10
+  dish_types:
+    - "plate"
+    - "bowl"
+    - "cup"
+    - "mug"
+    - "utensil"
+
+# Training configuration
+training:
+  data_dir: "data"
+  num_training_samples: 10000
+  validation_split: 0.1
+  hidden_dim: 256
+  num_layers: 3
+  dropout: 0.1
+  batch_size: 32
+  learning_rate: 0.0001
+  num_epochs: 100
+  early_stopping_patience: 10
+  checkpoint_dir: "checkpoints"
+  save_every: 10
+
+# Logging
+log_level: "INFO"
+log_dir: "logs"
+
+# General
+seed: 42
+debug: false

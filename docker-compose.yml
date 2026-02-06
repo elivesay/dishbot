@@ -1,0 +1,143 @@
+# Docker Compose configuration for DishBot Isaac Sim
+#
+# This file provides easy orchestration for running DishBot
+# with NVIDIA Isaac Sim in a containerized environment.
+#
+# Prerequisites:
+#   - Docker with NVIDIA Container Toolkit
+#   - NVIDIA GPU with driver 525.60+
+#   - Docker Compose v2.0+
+#
+# Usage:
+#   # Build the image
+#   docker compose build
+#
+#   # Run demo
+#   docker compose run dishbot demo
+#
+#   # Interactive shell
+#   docker compose run dishbot shell
+#
+#   # Start with livestream viewer
+#   docker compose up livestream
+#
+#   # Generate training data
+#   docker compose run dishbot train --generate-data --num-samples 1000
+
+services:
+  # Main DishBot service (headless mode)
+  dishbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ISAAC_SIM_VERSION: "4.2.0"
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+    image: dishbot:latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - DISPLAY=${DISPLAY:-}
+      - DISHBOT_HEADLESS=1
+      # Pass through any custom config
+      - DISHBOT_CONFIG=${DISHBOT_CONFIG:-}
+    volumes:
+      # Mount source code for development
+      - ./src:/workspace/src:ro
+      - ./configs:/workspace/configs:ro
+      # Mount data directories with write access
+      - ./data:/workspace/data
+      - ./checkpoints:/workspace/checkpoints
+      - ./outputs:/workspace/outputs
+      # Optional: mount custom configs
+      - ${DISHBOT_CONFIG_DIR:-./configs}:/workspace/custom_configs:ro
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    # Default to help message
+    command: ["--help"]
+
+  # Service with WebRTC livestream enabled
+  livestream:
+    extends:
+      service: dishbot
+    environment:
+      - DISHBOT_HEADLESS=0
+      - DISHBOT_LIVESTREAM=1
+    ports:
+      # WebRTC livestream
+      - "8211:8211"
+      # WebSocket
+      - "8011:8011"
+      # Omniverse streaming
+      - "47995-47999:47995-47999"
+    command: ["livestream"]
+
+  # Service with X11 GUI support (Linux host only)
+  gui:
+    extends:
+      service: dishbot
+    environment:
+      - DISPLAY=${DISPLAY}
+      - DISHBOT_HEADLESS=0
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/home/dishbot/.Xauthority:ro
+    network_mode: host
+    command: ["shell"]
+
+  # Training service with optimized settings
+  training:
+    extends:
+      service: dishbot
+    environment:
+      - DISHBOT_HEADLESS=1
+      # Optimize for training
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    volumes:
+      - ./src:/workspace/src:ro
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data
+      - ./checkpoints:/workspace/checkpoints
+    # Increase shared memory for DataLoader workers
+    shm_size: '8gb'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["train"]
+
+  # Development service with hot-reload support
+  dev:
+    extends:
+      service: dishbot
+    environment:
+      - PYTHONDONTWRITEBYTECODE=0
+      - DISHBOT_HEADLESS=1
+    volumes:
+      # Mount source as writable for development
+      - ./src:/workspace/src:rw
+      - ./configs:/workspace/configs:rw
+      - ./tests:/workspace/tests:rw
+      - ./data:/workspace/data
+      - ./checkpoints:/workspace/checkpoints
+    command: ["shell"]
+
+# Network configuration
+networks:
+  default:
+    driver: bridge
+
+# Volume definitions for persistent data
+volumes:
+  data:
+    driver: local
+  checkpoints:
+    driver: local
+  outputs:
+    driver: local
