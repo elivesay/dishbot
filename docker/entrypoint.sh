@@ -63,8 +63,12 @@ start_livestream() {
     echo "Starting Isaac Sim with WebRTC livestream..."
     echo "Access the stream at: http://localhost:8211"
     export LIVESTREAM=1
-    exec "${ISAAC_SIM_PATH}/python.sh" \
+    exec "${ISAAC_SIM_PATH}/isaac-sim.sh" \
+        --no-window \
         --enable omni.kit.livestream.webrtc \
+        --disable omni.physx.supportui \
+        --/app/livestream/enabled=true \
+        --allow-root \
         "$@"
 }
 

@@ -4,9 +4,13 @@
 # with NVIDIA Isaac Sim in a containerized environment.
 #
 # Prerequisites:
-#   - Docker with NVIDIA Container Toolkit
+#   - Docker with NVIDIA Container Toolkit (for GPU)
 #   - NVIDIA GPU with driver 525.60+
 #   - Docker Compose v2.0+
+#
+# GPU runtime: Default is "runc" so the container starts even without the
+# NVIDIA Container Toolkit. For GPU support, install the toolkit and set
+# DOCKER_NVIDIA_RUNTIME=nvidia (e.g. export DOCKER_NVIDIA_RUNTIME=nvidia).
 #
 # Usage:
 #   # Build the image
@@ -35,7 +39,7 @@ services:
         USER_ID: ${UID:-1000}
         GROUP_ID: ${GID:-1000}
     image: dishbot:latest
-    runtime: nvidia
+    runtime: ${DOCKER_NVIDIA_RUNTIME:-runc}
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
@@ -73,6 +77,13 @@ services:
       - "8011:8011"
       # Omniverse streaming
       - "47995-47999:47995-47999"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     command: ["livestream"]
 
   # Service with X11 GUI support (Linux host only)
